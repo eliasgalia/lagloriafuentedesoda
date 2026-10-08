@@ -1,7 +1,7 @@
 # MVP roadmap
-- [ ] Brand shell, local editor state and client configuration
-- [ ] Demo media, upload and interactive video overlay editor
-- [ ] Contextual mock copy generation and clipboard actions
-- [ ] Simulated publishing, scheduling and original-video download
-- [ ] Media library and weekly calendar
-- [ ] Verify desktop/mobile interactions and preview health
+- [x] Brand shell, local editor state and client configuration
+- [x] Demo media, upload and interactive video overlay editor
+- [x] Contextual mock copy generation and clipboard actions
+- [x] Simulated publishing, scheduling and original-video download
+- [x] Media library and weekly calendar
+- [x] Verify desktop/mobile interactions and preview health

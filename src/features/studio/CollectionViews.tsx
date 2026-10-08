@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { brandConfig } from './brandConfig';
 import { useStudio, type Post } from './store';
+export function matchesCalendarDate(post:Post,date:Date,week:number,day:number){const key=`${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`;return post.date?post.date===key:week===0&&post.day===day}
 const statusLabel={published:'Publicado',scheduled:'Programado',draft:'Borrador'};
 function Status({status}:{status:Post['status']}){return <span className={`post-status status-${status}`}><i/>{statusLabel[status]}</span>}
 function Detail({post,onClose,onEdit}:{post:Post|null;onClose:()=>void;onEdit:()=>void}){return <Dialog open={!!post} onOpenChange={open=>{if(!open)onClose()}}><DialogContent className="media-detail">{post&&<><DialogTitle>{post.title}</DialogTitle><DialogDescription>{post.channels.join(' · ')} · Datos de demostración</DialogDescription><video controls playsInline src={brandConfig.demoVideo} poster={post.image==='burger'?brandConfig.poster:brandConfig.griddle}/><div className="flex justify-between"><Status status={post.status}/><span className="tiny-muted">{post.views} visualizaciones</span></div><Button onClick={()=>{onClose();onEdit()}}><Film/>Abrir en Studio</Button></>}</DialogContent></Dialog>}

@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
-export type Post = { id: string; title: string; status: 'published' | 'scheduled' | 'draft'; day: number; time: string; image: 'burger' | 'griddle'; views: string; likes: number; comments: number; channels: string[] };
+export type Post = { id: string; title: string; status: 'published' | 'scheduled' | 'draft'; day: number; date?: string; time: string; image: 'burger' | 'griddle'; views: string; likes: number; comments: number; channels: string[] };
 export const initialPosts: Post[] = [
   { id:'1',title:'La gigante de Franklin 🍔',status:'published',day:0,time:'13:00',image:'burger',views:'12,4 mil',likes:846,comments:52,channels:['Instagram','TikTok'] },
   { id:'2',title:'El sonido de la gloria 🔥',status:'published',day:1,time:'19:30',image:'griddle',views:'8,2 mil',likes:512,comments:31,channels:['Instagram'] },
