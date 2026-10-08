@@ -1,21 +1,308 @@
-import { useEffect, useState } from 'react';
-import { Link, useLocation } from '@tanstack/react-router';
-import { Clapperboard, Library, CalendarDays, ChevronsUpDown, PanelLeftClose, PanelLeftOpen, ArrowUpRight, Download, ChevronDown, Sparkles, Check, CircleHelp, X, Zap, Command } from 'lucide-react';
-import { toast } from 'sonner';
-import { Button } from '@/components/ui/button';
-import { Toaster } from '@/components/ui/sonner';
-import { brandConfig } from './brandConfig';
-import { useStudio } from './store';
-import { VideoEditor } from './VideoEditor';
-import { CopyPanel } from './CopyPanel';
-import { Publisher } from './Publisher';
-import { MediaLibrary, ContentCalendar } from './CollectionViews';
-import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
-export function StudioApp({view='studio'}:{view?:'studio'|'library'|'calendar'}){const s=useStudio();const [collapsed,setCollapsed]=useState(false),[source,setSource]=useState(brandConfig.demoVideo),[fileName,setFileName]=useState('la_gloria_hamburguesa.mp4'),[exporting,setExporting]=useState(false),[help,setHelp]=useState(false),[brandMenu,setBrandMenu]=useState(false);const location=useLocation();
- useEffect(()=>{useStudio.persist.rehydrate()},[]);
- useEffect(()=>()=>{if(source.startsWith('blob:'))URL.revokeObjectURL(source)},[source]);
- const download=async()=>{setExporting(true);try{const response=await fetch(source===brandConfig.demoVideo?brandConfig.originalVideo:source);if(!response.ok)throw new Error();const blob=await response.blob();const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=`la-gloria-original-${fileName}`;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);toast.success('Video original descargado (sin overlays)',{description:'Render real con FFmpeg se activará en Cloud Run.'})}catch{toast.error('No se pudo descargar. Vuelve a intentar.')}finally{setExporting(false)}};
- const newEdit=()=>{window.location.href='/'};
-return <div className={`app-shell ${collapsed?'sidebar-collapsed':''}`}><aside className="app-sidebar"><Link to="/" className="agency-logo" aria-label="Galia Studio"><span className="agency-symbol"><Zap size={22} fill="currentColor"/></span>{!collapsed&&<span>galia<span className="studio-word">studio</span><i/></span>}</Link><div className="workspace-label">WORKSPACE</div><div className="brand-switch-wrap"><Button variant="ghost" className="brand-switch" onClick={()=>setBrandMenu(!brandMenu)} title="Workspace La Gloria"><img src={brandConfig.logo} alt="La Gloria"/>{!collapsed&&<><span><b>La Gloria</b><small>Fuente de Soda · Franklin</small></span><ChevronsUpDown size={14}/></>}</Button>{brandMenu&&<div className="brand-menu"><b>Tu workspace</b><span><img src={brandConfig.logo} alt=""/>La Gloria<Check size={14}/></span><small>Más marcas próximamente</small></div>}</div><div className="nav-label">CREA & CONECTA</div><nav>{[{to:'/' as const,label:'Studio',icon:Clapperboard},{to:'/library' as const,label:'Biblioteca de medios',icon:Library},{to:'/calendar' as const,label:'Calendario',icon:CalendarDays}].map(({to,label,icon:Icon})=><Button asChild variant="ghost" className={`nav-item ${location.pathname===to?'nav-active':''}`} key={to} title={label}><Link to={to}><Icon size={18}/>{!collapsed&&<span>{label}</span>}{to==='/'&&!collapsed&&<span className="nav-spark">✦</span>}</Link></Button>)}</nav><div className="sidebar-bottom">{!collapsed&&<div className="galia-points"><span className="points-icon"><Sparkles size={19}/></span><span><b>{s.points} puntos Galia</b><small>Cada idea cuenta.</small></span><ArrowUpRight size={15}/></div>}<Button variant="ghost" className="help-button" onClick={()=>setHelp(true)} title="Ayuda y soporte"><CircleHelp/>{!collapsed&&<span>Ayuda y soporte<ArrowUpRight size={13}/></span>}</Button><div className="sidebar-profile"><span className="profile-avatar">EG</span>{!collapsed&&<span><b>Elias Galia</b><small>Galia Digital</small></span>}<Button variant="ghost" size="icon" title={collapsed?'Expandir menú':'Contraer menú'} aria-label={collapsed?'Expandir menú':'Contraer menú'} onClick={()=>setCollapsed(!collapsed)}>{collapsed?<PanelLeftOpen/>:<PanelLeftClose/>}</Button></div></div></aside>
-<div className="app-main"><header className="topbar"><div className="breadcrumbs"><span>La Gloria</span><span>/</span><b>{view==='studio'?'Content Studio':view==='library'?'Biblioteca':'Calendario'}</b></div><div className="topbar-right"><span className="saved-status"><span className="live-dot"/>Guardado localmente</span><span className="demo-tag">MVP DEMO</span><span className="top-avatar">EG</span></div></header><main className="main-content">{view==='studio'?<><div className="view-heading"><div><span className="eyebrow"><span/>DEL BARRIO AL FEED</span><h1>El próximo reel tiene gloria<span>.</span></h1><p>Tu video, la esencia de La Gloria. Listo para compartir.</p></div><Button variant="outline" className="export-button" onClick={download} disabled={exporting}><Download/>{exporting?'Preparando…':'Descargar video con logo'}<span className="export-tag">DEMO</span></Button></div><div className="workflow-steps"><span className="step-active"><b>01</b>Tu video<Check size={12}/></span><i/><span><b>02</b>Dale tu sello</span><i/><span><b>03</b>Comparte la gloria</span><div className="ready-chip"><Zap size={13}/>De la idea al reel, en 60 segundos</div></div><div className="studio-grid"><VideoEditor src={source} fileName={fileName} onVideo={(url,name)=>{setSource(url);setFileName(name)}}/><CopyPanel/></div><Publisher/></>:view==='library'?<MediaLibrary onEdit={newEdit}/>:<ContentCalendar onEdit={newEdit}/>}<footer><span>Powered by <b>Galia Digital</b><span className="footer-divider">/</span><span className="footer-motto">#NOHAYEXCUSA</span></span><span>Hecho con hambre de crear <span className="footer-spark">✦</span></span></footer></main></div><Toaster theme="dark" position="bottom-right" richColors/><Dialog open={help} onOpenChange={setHelp}><DialogContent><DialogTitle>Galia Studio · MVP</DialogTitle><DialogDescription>Tu contenido y ajustes se guardan en este navegador. Los videos subidos permanecen solo durante la sesión.<br/><br/>La generación de textos, los canales conectados y la publicación son demostrativos. La descarga contiene el video original sin marca de agua ni textos.<br/><br/>Para soporte, visita galiadigital.cl.</DialogDescription><Button asChild><a href="https://galiadigital.cl" target="_blank" rel="noreferrer">Galia Digital<ArrowUpRight/></a></Button></DialogContent></Dialog></div>
+import { useEffect, useState } from "react";
+import { Link, useLocation } from "@tanstack/react-router";
+import {
+  Clapperboard,
+  Library,
+  CalendarDays,
+  ChevronsUpDown,
+  PanelLeftClose,
+  PanelLeftOpen,
+  ArrowUpRight,
+  Download,
+  ChevronDown,
+  Sparkles,
+  Check,
+  CircleHelp,
+  X,
+  Zap,
+  Command,
+} from "lucide-react";
+import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
+import { Toaster } from "@/components/ui/sonner";
+import { brandConfig } from "./brandConfig";
+import { useStudio } from "./store";
+import { VideoEditor } from "./VideoEditor";
+import { CopyPanel } from "./CopyPanel";
+import { Publisher } from "./Publisher";
+import { MediaLibrary, ContentCalendar } from "./CollectionViews";
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+export function StudioApp({ view = "studio" }: { view?: "studio" | "library" | "calendar" }) {
+  const s = useStudio();
+  const [collapsed, setCollapsed] = useState(false),
+    [source, setSource] = useState(brandConfig.demoVideo),
+    [fileName, setFileName] = useState("la_gloria_hamburguesa.mp4"),
+    [exporting, setExporting] = useState(false),
+    [help, setHelp] = useState(false),
+    [brandMenu, setBrandMenu] = useState(false);
+  const location = useLocation();
+  useEffect(() => {
+    useStudio.persist.rehydrate();
+  }, []);
+  useEffect(
+    () => () => {
+      if (source.startsWith("blob:")) URL.revokeObjectURL(source);
+    },
+    [source],
+  );
+  const download = async () => {
+    setExporting(true);
+    try {
+      const response = await fetch(
+        source === brandConfig.demoVideo ? brandConfig.originalVideo : source,
+      );
+      if (!response.ok) throw new Error();
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `la-gloria-original-${fileName}`;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      toast.success("Video original descargado (sin overlays)", {
+        description: "Render real con FFmpeg se activará en Cloud Run.",
+      });
+    } catch {
+      toast.error("No se pudo descargar. Vuelve a intentar.");
+    } finally {
+      setExporting(false);
+    }
+  };
+  const newEdit = () => {
+    window.location.href = "/";
+  };
+  return (
+    <div className={`app-shell ${collapsed ? "sidebar-collapsed" : ""}`}>
+      <aside className="app-sidebar">
+        <Link to="/" className="agency-logo" aria-label="Galia Studio">
+          <span className="agency-symbol">
+            <Zap size={22} fill="currentColor" />
+          </span>
+          {!collapsed && (
+            <span>
+              galia<span className="studio-word">studio</span>
+              <i />
+            </span>
+          )}
+        </Link>
+        <div className="workspace-label">WORKSPACE</div>
+        <div className="brand-switch-wrap">
+          <Button
+            variant="ghost"
+            className="brand-switch"
+            onClick={() => setBrandMenu(!brandMenu)}
+            title="Workspace La Gloria"
+          >
+            <img src={brandConfig.logo} alt="La Gloria" />
+            {!collapsed && (
+              <>
+                <span>
+                  <b>La Gloria</b>
+                  <small>Fuente de Soda · Franklin</small>
+                </span>
+                <ChevronsUpDown size={14} />
+              </>
+            )}
+          </Button>
+          {brandMenu && (
+            <div className="brand-menu">
+              <b>Tu workspace</b>
+              <span>
+                <img src={brandConfig.logo} alt="" />
+                La Gloria
+                <Check size={14} />
+              </span>
+              <small>Más marcas próximamente</small>
+            </div>
+          )}
+        </div>
+        <div className="nav-label">CREA & CONECTA</div>
+        <nav>
+          {[
+            { to: "/" as const, label: "Studio", icon: Clapperboard },
+            { to: "/library" as const, label: "Biblioteca de medios", icon: Library },
+            { to: "/calendar" as const, label: "Calendario", icon: CalendarDays },
+          ].map(({ to, label, icon: Icon }) => (
+            <Button
+              asChild
+              variant="ghost"
+              className={`nav-item ${location.pathname === to ? "nav-active" : ""}`}
+              key={to}
+              title={label}
+            >
+              <Link to={to}>
+                <Icon size={18} />
+                {!collapsed && <span>{label}</span>}
+                {to === "/" && !collapsed && <span className="nav-spark">✦</span>}
+              </Link>
+            </Button>
+          ))}
+        </nav>
+        <div className="sidebar-bottom">
+          {!collapsed && (
+            <div className="galia-points">
+              <span className="points-icon">
+                <Sparkles size={19} />
+              </span>
+              <span>
+                <b>{s.points} puntos Galia</b>
+                <small>Cada idea cuenta.</small>
+              </span>
+              <ArrowUpRight size={15} />
+            </div>
+          )}
+          <Button
+            variant="ghost"
+            className="help-button"
+            onClick={() => setHelp(true)}
+            title="Ayuda y soporte"
+          >
+            <CircleHelp />
+            {!collapsed && (
+              <span>
+                Ayuda y soporte
+                <ArrowUpRight size={13} />
+              </span>
+            )}
+          </Button>
+          <div className="sidebar-profile">
+            <span className="profile-avatar">EG</span>
+            {!collapsed && (
+              <span>
+                <b>Elias Galia</b>
+                <small>Galia Digital</small>
+              </span>
+            )}
+            <Button
+              variant="ghost"
+              size="icon"
+              title={collapsed ? "Expandir menú" : "Contraer menú"}
+              aria-label={collapsed ? "Expandir menú" : "Contraer menú"}
+              onClick={() => setCollapsed(!collapsed)}
+            >
+              {collapsed ? <PanelLeftOpen /> : <PanelLeftClose />}
+            </Button>
+          </div>
+        </div>
+      </aside>
+      <div className="app-main">
+        <header className="topbar">
+          <div className="breadcrumbs">
+            <span>La Gloria</span>
+            <span>/</span>
+            <b>
+              {view === "studio"
+                ? "Content Studio"
+                : view === "library"
+                  ? "Biblioteca"
+                  : "Calendario"}
+            </b>
+          </div>
+          <div className="topbar-right">
+            <span className="saved-status">
+              <span className="live-dot" />
+              Guardado localmente
+            </span>
+            <span className="demo-tag">MVP DEMO</span>
+            <span className="top-avatar">EG</span>
+          </div>
+        </header>
+        <main className="main-content">
+          {view === "studio" ? (
+            <>
+              <div className="view-heading">
+                <div>
+                  <span className="eyebrow">
+                    <span />
+                    DEL BARRIO AL FEED
+                  </span>
+                  <h1>
+                    El próximo reel tiene gloria<span>.</span>
+                  </h1>
+                  <p>Tu video, la esencia de La Gloria. Listo para compartir.</p>
+                </div>
+                <Button
+                  variant="outline"
+                  className="export-button"
+                  onClick={download}
+                  disabled={exporting}
+                >
+                  <Download />
+                  {exporting ? "Preparando…" : "Descargar video con logo"}
+                  <span className="export-tag">DEMO</span>
+                </Button>
+              </div>
+              <div className="workflow-steps">
+                <span className="step-active">
+                  <b>01</b>Tu video
+                  <Check size={12} />
+                </span>
+                <i />
+                <span>
+                  <b>02</b>Dale tu sello
+                </span>
+                <i />
+                <span>
+                  <b>03</b>Comparte la gloria
+                </span>
+                <div className="ready-chip">
+                  <Zap size={13} />
+                  De la idea al reel, en 60 segundos
+                </div>
+              </div>
+              <div className="studio-grid">
+                <VideoEditor
+                  src={source}
+                  fileName={fileName}
+                  onVideo={(url, name) => {
+                    setSource(url);
+                    setFileName(name);
+                  }}
+                />
+                <CopyPanel />
+              </div>
+              <Publisher />
+            </>
+          ) : view === "library" ? (
+            <MediaLibrary onEdit={newEdit} />
+          ) : (
+            <ContentCalendar onEdit={newEdit} />
+          )}
+          <footer>
+            <span>
+              Powered by <b>Galia Digital</b>
+              <span className="footer-divider">/</span>
+              <span className="footer-motto">#NOHAYEXCUSA</span>
+            </span>
+            <span>
+              Hecho con hambre de crear <span className="footer-spark">✦</span>
+            </span>
+          </footer>
+        </main>
+      </div>
+      <Toaster theme="dark" position="bottom-right" richColors />
+      <Dialog open={help} onOpenChange={setHelp}>
+        <DialogContent>
+          <DialogTitle>Galia Studio · MVP</DialogTitle>
+          <DialogDescription>
+            Tu contenido y ajustes se guardan en este navegador. Los videos subidos permanecen solo
+            durante la sesión.
+            <br />
+            <br />
+            La generación de textos, los canales conectados y la publicación son demostrativos. La
+            descarga contiene el video original sin marca de agua ni textos.
+            <br />
+            <br />
+            Para soporte, visita galiadigital.cl.
+          </DialogDescription>
+          <Button asChild>
+            <a href="https://galiadigital.cl" target="_blank" rel="noreferrer">
+              Galia Digital
+              <ArrowUpRight />
+            </a>
+          </Button>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
 }
