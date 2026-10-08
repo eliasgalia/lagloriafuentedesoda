@@ -1,0 +1,294 @@
+import { useState } from "react";
+import {
+  Play,
+  Eye,
+  Heart,
+  MessageCircle,
+  Instagram,
+  Music2,
+  Filter,
+  ChevronLeft,
+  ChevronRight,
+  CalendarDays,
+  Plus,
+  Film,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { brandConfig } from "./brandConfig";
+import { useStudio, type Post } from "./store";
+export function matchesCalendarDate(post: Post, date: Date, week: number, day: number) {
+  const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+  return post.date ? post.date === key : week === 0 && post.day === day;
+}
+const statusLabel = { published: "Publicado", scheduled: "Programado", draft: "Borrador" };
+function Status({ status }: { status: Post["status"] }) {
+  return (
+    <span className={`post-status status-${status}`}>
+      <i />
+      {statusLabel[status]}
+    </span>
+  );
+}
+function Detail({
+  post,
+  onClose,
+  onEdit,
+}: {
+  post: Post | null;
+  onClose: () => void;
+  onEdit: () => void;
+}) {
+  return (
+    <Dialog
+      open={!!post}
+      onOpenChange={(open) => {
+        if (!open) onClose();
+      }}
+    >
+      <DialogContent className="media-detail">
+        {post && (
+          <>
+            <DialogTitle>{post.title}</DialogTitle>
+            <DialogDescription>
+              {post.channels.join(" · ")} · Datos de demostración
+            </DialogDescription>
+            <video
+              controls
+              playsInline
+              src={brandConfig.demoVideo}
+              poster={post.image === "burger" ? brandConfig.poster : brandConfig.griddle}
+            />
+            <div className="flex justify-between">
+              <Status status={post.status} />
+              <span className="tiny-muted">{post.views} visualizaciones</span>
+            </div>
+            <Button
+              onClick={() => {
+                onClose();
+                onEdit();
+              }}
+            >
+              <Film />
+              Abrir en Studio
+            </Button>
+          </>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+export function MediaLibrary({ onEdit }: { onEdit: () => void }) {
+  const s = useStudio();
+  const [filter, setFilter] = useState("all"),
+    [selected, setSelected] = useState<Post | null>(null);
+  const posts = s.posts.filter((p) => filter === "all" || p.status === filter);
+  return (
+    <>
+      <div className="view-heading">
+        <div>
+          <span className="eyebrow">TU ARCHIVO CREATIVO</span>
+          <h1>
+            Biblioteca de medios<span>.</span>
+          </h1>
+          <p>Un buen contenido siempre merece una segunda vuelta.</p>
+        </div>
+        <Button onClick={onEdit}>
+          <Plus />
+          Nuevo video
+        </Button>
+      </div>
+      <div className="library-toolbar">
+        <div className="segmented">
+          {[
+            { key: "all", label: "Todos los medios" },
+            { key: "published", label: "Publicados" },
+            { key: "scheduled", label: "Programados" },
+            { key: "draft", label: "Borradores" },
+          ].map((v) => (
+            <Button
+              key={v.key}
+              variant="ghost"
+              size="sm"
+              className={filter === v.key ? "active" : ""}
+              onClick={() => setFilter(v.key)}
+            >
+              {v.label}
+            </Button>
+          ))}
+        </div>
+        <span>
+          <Filter size={14} />
+          {posts.length} videos · La Gloria
+        </span>
+      </div>
+      <div className="media-grid">
+        {posts.map((post) => (
+          <article className="media-card" key={post.id}>
+            <div className="media-cover">
+              <img
+                src={post.image === "burger" ? brandConfig.poster : brandConfig.griddle}
+                width={1024}
+                height={1536}
+                loading="lazy"
+                alt={post.title}
+              />
+              <video
+                src={brandConfig.demoVideo}
+                muted
+                loop
+                playsInline
+                preload="none"
+                onMouseEnter={(e) => e.currentTarget.play().catch(() => {})}
+                onMouseLeave={(e) => {
+                  e.currentTarget.pause();
+                  e.currentTarget.currentTime = 0;
+                }}
+              />
+              <Status status={post.status} />
+              <span className="media-duration">00:15</span>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="media-play"
+                aria-label={`Ver ${post.title}`}
+                onClick={() => setSelected(post)}
+              >
+                <Play fill="currentColor" />
+              </Button>
+              <span className="media-kind">
+                {post.status === "draft" ? "Clip original" : "Video de marca"}
+              </span>
+            </div>
+            <div className="media-card-content">
+              <h3>{post.title}</h3>
+              <span className="tiny-muted">La Gloria · {post.time} hrs</span>
+              <div className="media-stats">
+                <span>
+                  <Eye />
+                  {post.views}
+                </span>
+                <span>
+                  <Heart />
+                  {post.likes}
+                </span>
+                <span>
+                  <MessageCircle />
+                  {post.comments}
+                </span>
+                <Instagram className="ml-auto" />
+              </div>
+            </div>
+          </article>
+        ))}
+      </div>
+      <Detail post={selected} onClose={() => setSelected(null)} onEdit={onEdit} />
+    </>
+  );
+}
+export function ContentCalendar({ onEdit }: { onEdit: () => void }) {
+  const s = useStudio();
+  const [week, setWeek] = useState(0),
+    [selected, setSelected] = useState<Post | null>(null);
+  const today = new Date();
+  const monday = new Date(today);
+  monday.setDate(today.getDate() - ((today.getDay() + 6) % 7) + week * 7);
+  const dates = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(monday);
+    d.setDate(monday.getDate() + i);
+    return d;
+  });
+  const label = new Intl.DateTimeFormat("es-CL", { month: "long", year: "numeric" }).format(monday);
+  return (
+    <>
+      <div className="view-heading">
+        <div>
+          <span className="eyebrow">UN BARRIO QUE NO PARA</span>
+          <h1>
+            Calendario de contenido<span>.</span>
+          </h1>
+          <p>La próxima semana de La Gloria, con todo su sabor.</p>
+        </div>
+        <Button onClick={onEdit}>
+          <Plus />
+          Crear contenido
+        </Button>
+      </div>
+      <div className="calendar-toolbar">
+        <div className="flex items-center gap-3">
+          <CalendarDays size={19} />
+          <h2>{label}</h2>
+          <Button variant="outline" size="sm" onClick={() => setWeek(0)}>
+            Hoy
+          </Button>
+        </div>
+        <div className="flex items-center gap-1">
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-label="Semana anterior"
+            onClick={() => setWeek((w) => w - 1)}
+          >
+            <ChevronLeft />
+          </Button>
+          <span>Semana</span>
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-label="Semana siguiente"
+            onClick={() => setWeek((w) => w + 1)}
+          >
+            <ChevronRight />
+          </Button>
+        </div>
+      </div>
+      <div className="calendar-scroll">
+        <div className="calendar-grid">
+          {dates.map((date, i) => (
+            <div
+              className={`calendar-day ${date.toDateString() === today.toDateString() ? "today" : ""}`}
+              key={i}
+            >
+              <header>
+                <span>{["LUN", "MAR", "MIÉ", "JUE", "VIE", "SÁB", "DOM"][i]}</span>
+                <b>{date.getDate()}</b>
+              </header>
+              <div className="calendar-day-posts">
+                {s.posts
+                  .filter((p) => matchesCalendarDate(p, date, week, i))
+                  .map((post) => (
+                    <Button
+                      variant="ghost"
+                      className="calendar-post"
+                      key={post.id}
+                      onClick={() => setSelected(post)}
+                    >
+                      <img
+                        src={post.image === "burger" ? brandConfig.poster : brandConfig.griddle}
+                        alt=""
+                      />
+                      <span className="calendar-post-body">
+                        <small>
+                          {post.time} ·{" "}
+                          {post.channels.includes("TikTok") ? "Reel + TikTok" : "Reel"}
+                        </small>
+                        <b>{post.title}</b>
+                        <Status status={post.status} />
+                      </span>
+                    </Button>
+                  ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+      <div className="calendar-legend">
+        <Status status="published" />
+        <Status status="scheduled" />
+        <Status status="draft" />
+        <span className="ml-auto tiny-muted">Santiago, Chile · UTC −03:00 · Demo</span>
+      </div>
+      <Detail post={selected} onClose={() => setSelected(null)} onEdit={onEdit} />
+    </>
+  );
+}
