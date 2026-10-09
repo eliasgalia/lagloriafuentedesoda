@@ -173,5 +173,5 @@ export async function renderBrandedVideo(
   stream.getTracks().forEach((t) => t.stop());
   audioCtx?.close();
   onProgress(100);
-  return { blob: new Blob(chunks, { type: mime.split(";")[0] }), ext: mime.includes("mp4") ? "mp4" : "webm" };
+  return { blob: new Blob(chunks, { type: mime.split(";")[0] ?? mime }), ext: mime.includes("mp4") ? "mp4" : "webm" };
 }
