@@ -33,6 +33,7 @@ export function StudioApp({ view = "studio" }: { view?: "studio" | "library" | "
     [source, setSource] = useState(brandConfig.demoVideo),
     [fileName, setFileName] = useState("la_gloria_hamburguesa.mp4"),
     [exporting, setExporting] = useState(false),
+    [renderPct, setRenderPct] = useState<number | null>(null),
     [help, setHelp] = useState(false),
     [brandMenu, setBrandMenu] = useState(false);
   const location = useLocation();
@@ -227,8 +228,7 @@ export function StudioApp({ view = "studio" }: { view?: "studio" | "library" | "
                   disabled={exporting}
                 >
                   <Download />
-                  {exporting ? "Preparando…" : "Descargar video con logo"}
-                  <span className="export-tag">DEMO</span>
+                  {exporting ? `Renderizando… ${renderPct ?? 0}%` : "Descargar video con logo"}
                 </Button>
               </div>
               <div className="workflow-steps">
