@@ -47,25 +47,24 @@ export function StudioApp({ view = "studio" }: { view?: "studio" | "library" | "
   );
   const download = async () => {
     setExporting(true);
+    setRenderPct(0);
     try {
-      const response = await fetch(
-        source === brandConfig.demoVideo ? brandConfig.originalVideo : source,
-      );
-      if (!response.ok) throw new Error();
-      const blob = await response.blob();
+      const { renderBrandedVideo } = await import("./renderer");
+      const { blob, ext } = await renderBrandedVideo(source, brandConfig.logo, s, setRenderPct);
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `la-gloria-original-${fileName}`;
+      a.download = `la-gloria-reel-${fileName.replace(/\.\w+$/, "")}.${ext}`;
       a.click();
-      setTimeout(() => URL.revokeObjectURL(url), 1000);
-      toast.success("Video original descargado (sin overlays)", {
-        description: "Render real con FFmpeg se activará en Cloud Run.",
+      setTimeout(() => URL.revokeObjectURL(url), 2000);
+      toast.success("¡Video con marca listo!", {
+        description: "Incluye logo, hook y banner. Súbelo directo a Reels o TikTok.",
       });
-    } catch {
-      toast.error("No se pudo descargar. Vuelve a intentar.");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "No se pudo renderizar el video.");
     } finally {
       setExporting(false);
+      setRenderPct(null);
     }
   };
   const newEdit = () => {
