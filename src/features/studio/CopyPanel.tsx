@@ -14,6 +14,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { useStudio, generateCopy } from "./store";
 import { Field } from "./Controls";
+import { generateCopyAI } from "./copy.functions";
 export async function copyText(value: string) {
   try {
     await navigator.clipboard.writeText(value);
@@ -27,14 +28,23 @@ export function CopyPanel() {
   const [loading, setLoading] = useState(false),
     [version, setVersion] = useState(0),
     [copied, setCopied] = useState("");
-  const generate = () => {
+  const generate = async () => {
     setLoading(true);
-    setTimeout(() => {
-      s.update(generateCopy(s.event, s.tone, version));
-      setVersion((v) => v + 1);
+    try {
+      const r = await generateCopyAI({ data: { event: s.event, tone: s.tone } });
+      if (r.ok) {
+        s.update({ hook: r.hook, caption: r.caption, hashtags: r.hashtags });
+        toast.success("3 ideas listas para tu próximo reel");
+      } else {
+        s.update(generateCopy(s.event, s.tone, version));
+        setVersion((v) => v + 1);
+        toast.error(`${r.error} Usamos una plantilla de respaldo.`);
+      }
+    } catch {
+      toast.error("Sin conexión con la IA. Intenta otra vez.");
+    } finally {
       setLoading(false);
-      toast.success("3 ideas listas para tu próximo reel");
-    }, 850);
+    }
   };
   const copy = (name: string, value: string) => {
     copyText(value);
