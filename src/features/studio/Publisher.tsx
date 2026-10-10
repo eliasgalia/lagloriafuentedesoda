@@ -16,7 +16,9 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { brandConfig } from "./brandConfig";
 import { useStudio } from "./store";
-export function Publisher() {
+import { useEffect } from "react";
+import { WEBHOOK_KEY, buildPayload, isValidWebhook, sendWebhook } from "./webhook";
+export function Publisher({ fileName = "la_gloria_reel.mp4" }: { fileName?: string }) {
   const s = useStudio();
   const [accounts, setAccounts] = useState(["Instagram", "TikTok"]),
     [mode, setMode] = useState<"now" | "later">("now"),
@@ -24,6 +26,100 @@ export function Publisher() {
     [time, setTime] = useState("13:00"),
     [open, setOpen] = useState(false),
     [stage, setStage] = useState(0);
+  const [hookUrl, setHookUrl] = useState(""),
+    [savedUrl, setSavedUrl] = useState(""),
+    [testing, setTesting] = useState(false),
+    [wh, setWh] = useState<"idle" | "sending" | "ok" | "error">("idle"),
+    [whMsg, setWhMsg] = useState("");
+  useEffect(() => {
+    const v = localStorage.getItem(WEBHOOK_KEY) ?? "";
+    setHookUrl(v);
+    setSavedUrl(v);
+  }, []);
+  const saveUrl = () => {
+    const v = hookUrl.trim();
+    if (v && !isValidWebhook(v)) {
+      toast.error("La URL debe empezar con https://");
+      return;
+    }
+    if (v) localStorage.setItem(WEBHOOK_KEY, v);
+    else localStorage.removeItem(WEBHOOK_KEY);
+    setSavedUrl(v);
+    toast.success(v ? "Webhook guardado" : "Webhook eliminado · modo demo");
+  };
+  const testUrl = async () => {
+    const v = hookUrl.trim();
+    if (!isValidWebhook(v)) {
+      toast.error("Ingresa una URL https:// válida");
+      return;
+    }
+    setTesting(true);
+    try {
+      const code = await sendWebhook(v, { source: "galia-studio-v1", test: true });
+      toast.success(`Conexión OK (${code})`);
+    } catch (e) {
+      toast.error(`Error ❌ ${e instanceof Error ? e.message : ""}`);
+    } finally {
+      setTesting(false);
+    }
+  };
+  const addPost = () => {
+    const now = new Date(Date.now() - 3 * 60 * 60 * 1000);
+    const postDate = mode === "later" ? date : now.toISOString().slice(0, 10);
+    const day = (new Date(`${postDate}T12:00:00Z`).getUTCDay() + 6) % 7;
+    const state = useStudio.getState();
+    s.update({
+      points: state.points + 5,
+      posts: [
+        {
+          id: crypto.randomUUID(),
+          title: state.hook.replace(/\n/g, " "),
+          status: mode === "later" ? "scheduled" : "published",
+          day,
+          date: postDate,
+          time: mode === "later" ? time : now.toISOString().slice(11, 16),
+          image: "burger",
+          views: "—",
+          likes: 0,
+          comments: 0,
+          channels: accounts,
+        },
+        ...state.posts,
+      ],
+    });
+  };
+  const sendReal = async () => {
+    setWh("sending");
+    setWhMsg("");
+    const st = useStudio.getState();
+    try {
+      const code = await sendWebhook(
+        savedUrl,
+        buildPayload({
+          hook: st.hook,
+          caption: st.caption,
+          hashtags: st.hashtags,
+          channels: accounts,
+          mode,
+          date,
+          time,
+          fileName,
+          x: st.x,
+          y: st.y,
+          size: st.size,
+          opacity: st.opacity,
+          bannerText: st.bannerText,
+        }),
+      );
+      setWh("ok");
+      setWhMsg(`Respuesta ${code}`);
+      addPost();
+      toast.success(`Enviado a Make ✅ (${code}) · +5 pts Galia`);
+    } catch (e) {
+      setWh("error");
+      setWhMsg(e instanceof Error ? e.message : "Error desconocido");
+    }
+  };
   const publish = () => {
     if (!accounts.length) {
       toast.error("Selecciona al menos un canal");
@@ -37,38 +133,20 @@ export function Publisher() {
       return;
     }
     setOpen(true);
+    if (savedUrl) {
+      setStage(3);
+      sendReal();
+      return;
+    }
+    setWh("idle");
     setStage(0);
-    // TODO: Connect to Make.com webhook for FFmpeg render.
-    // Future: authorize accounts with Meta Graph API; never treat mock connection status as OAuth.
     let i = 0;
     const timer = setInterval(() => {
       i++;
       setStage(i);
       if (i === 3) {
         clearInterval(timer);
-        const now = new Date(Date.now() - 3 * 60 * 60 * 1000);
-        const postDate = mode === "later" ? date : now.toISOString().slice(0, 10);
-        const day = (new Date(`${postDate}T12:00:00Z`).getUTCDay() + 6) % 7;
-        const state = useStudio.getState();
-        s.update({
-          points: state.points + 5,
-          posts: [
-            {
-              id: crypto.randomUUID(),
-              title: state.hook.replace(/\n/g, " "),
-              status: mode === "later" ? "scheduled" : "published",
-              day,
-              date: postDate,
-              time: mode === "later" ? time : now.toISOString().slice(11, 16),
-              image: "burger",
-              views: "—",
-              likes: 0,
-              comments: 0,
-              channels: accounts,
-            },
-            ...state.posts,
-          ],
-        });
+        addPost();
         toast.success(
           mode === "later"
             ? `¡Programado en ${accounts.join(" y ")}! +5 pts Galia (demo)`
@@ -77,6 +155,7 @@ export function Publisher() {
       }
     }, 900);
   };
+
   return (
     <section className="publisher">
       <div className="section-top">
