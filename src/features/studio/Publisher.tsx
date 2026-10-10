@@ -163,7 +163,9 @@ export function Publisher({ fileName = "la_gloria_reel.mp4" }: { fileName?: stri
           <Send size={15} />
           <h2>Un video. Más alcance.</h2>
         </div>
-        <span className="simulation-label">Publicación simulada</span>
+        <span className="simulation-label">
+          {savedUrl ? "Webhook real activo" : "Publicación simulada"}
+        </span>
       </div>
       <div className="publisher-content">
         <div className="channel-options">
@@ -245,12 +247,66 @@ export function Publisher({ fileName = "la_gloria_reel.mp4" }: { fileName?: stri
           </Button>
         </div>
       </div>
+      <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-border pt-4">
+        <span className="text-xs font-semibold text-muted-foreground">
+          Webhook Make / n8n {savedUrl ? "· real" : "· modo demo"}
+        </span>
+        <input
+          aria-label="Webhook URL"
+          type="url"
+          placeholder="https://hook.make.com/..."
+          value={hookUrl}
+          onChange={(e) => setHookUrl(e.target.value)}
+          className="h-9 min-w-[260px] flex-1 rounded-md border border-input bg-background px-3 text-sm"
+        />
+        <Button variant="outline" size="sm" onClick={testUrl} disabled={testing}>
+          {testing ? <LoaderCircle className="loading-spin" /> : <Send />}
+          Probar conexión
+        </Button>
+        <Button size="sm" onClick={saveUrl}>
+          <Check />
+          Guardar
+        </Button>
+      </div>
       <Dialog
         open={open}
         onOpenChange={(value) => {
-          if (stage === 3) setOpen(value);
+          if (savedUrl ? wh !== "sending" : stage === 3) setOpen(value);
         }}
       >
+        {savedUrl && wh !== "idle" ? (
+          <DialogContent className="publish-modal">
+            <div className="publish-modal-icon">
+              {wh === "ok" ? (
+                <CircleCheck />
+              ) : wh === "error" ? (
+                <X />
+              ) : (
+                <LoaderCircle className="loading-spin" />
+              )}
+            </div>
+            <DialogTitle>
+              {wh === "ok" ? "Enviado a Make ✅" : wh === "error" ? "Error ❌" : "Enviando…"}
+            </DialogTitle>
+            <DialogDescription>
+              Webhook real · {accounts.join(" + ")}
+              <br />
+              {whMsg || (mode === "later" ? `Programado ${date} ${time} (−03:00)` : "Publicar ahora")}
+            </DialogDescription>
+            {wh === "error" && (
+              <Button onClick={sendReal}>
+                Reintentar
+                <ArrowRight />
+              </Button>
+            )}
+            {wh === "ok" && (
+              <Button onClick={() => setOpen(false)}>
+                Listo, vamos por más
+                <Check />
+              </Button>
+            )}
+          </DialogContent>
+        ) : (
         <DialogContent className="publish-modal">
           <div className="publish-modal-icon">
             {stage === 3 ? <CircleCheck /> : <LoaderCircle className="loading-spin" />}
@@ -293,6 +349,7 @@ export function Publisher({ fileName = "la_gloria_reel.mp4" }: { fileName?: stri
             </Button>
           )}
         </DialogContent>
+        )}
       </Dialog>
     </section>
   );
