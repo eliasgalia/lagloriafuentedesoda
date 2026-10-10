@@ -295,7 +295,46 @@ export function Publisher() {
         </div>
       </div>
       <Dialog
-        open={open}
+        open={open && hook.state !== "idle"}
+        onOpenChange={(value) => {
+          if (hook.state !== "sending") setOpen(value);
+        }}
+      >
+        <DialogContent className="publish-modal">
+          <div className="publish-modal-icon">
+            {hook.state === "sending" ? (
+              <LoaderCircle className="loading-spin" />
+            ) : hook.state === "ok" ? (
+              <CircleCheck />
+            ) : (
+              <X />
+            )}
+          </div>
+          <DialogTitle>
+            {hook.state === "sending"
+              ? "Enviando..."
+              : hook.state === "ok"
+                ? "Enviado a Make ✅"
+                : "Error ❌"}
+          </DialogTitle>
+          <DialogDescription>
+            Webhook real · {accounts.join(" + ")}
+            <br />
+            {hook.msg}
+          </DialogDescription>
+          {hook.state === "error" && (
+            <Button onClick={() => void sendReal()}>Reintentar</Button>
+          )}
+          {hook.state === "ok" && (
+            <Button onClick={() => setOpen(false)}>
+              Listo, vamos por más
+              <Check />
+            </Button>
+          )}
+        </DialogContent>
+      </Dialog>
+      <Dialog
+        open={open && hook.state === "idle"}
         onOpenChange={(value) => {
           if (stage === 3) setOpen(value);
         }}
