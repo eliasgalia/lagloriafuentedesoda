@@ -16,6 +16,10 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { brandConfig } from "./brandConfig";
 import { useStudio } from "./store";
+import { useEffect } from "react";
+import { WEBHOOK_KEY, buildPayload } from "./webhook";
+import { sendWebhook } from "./webhook.functions";
+type Hook = { state: "idle" | "sending" | "ok" | "error"; msg?: string };
 export function Publisher() {
   const s = useStudio();
   const [accounts, setAccounts] = useState(["Instagram", "TikTok"]),
@@ -23,7 +27,62 @@ export function Publisher() {
     [date, setDate] = useState(""),
     [time, setTime] = useState("13:00"),
     [open, setOpen] = useState(false),
-    [stage, setStage] = useState(0);
+    [stage, setStage] = useState(0),
+    [url, setUrl] = useState(""),
+    [savedUrl, setSavedUrl] = useState(""),
+    [hook, setHook] = useState<Hook>({ state: "idle" }),
+    [test, setTest] = useState<Hook>({ state: "idle" });
+  useEffect(() => {
+    const v = localStorage.getItem(WEBHOOK_KEY) ?? "";
+    setUrl(v);
+    setSavedUrl(v);
+  }, []);
+  const payloadFor = (scheduledAt: string | null) => {
+    const st = useStudio.getState();
+    return buildPayload({
+      hook: st.hook,
+      caption: st.caption,
+      hashtags: st.hashtags,
+      channels: accounts,
+      scheduledAt,
+      x: st.x,
+      y: st.y,
+      size: st.size,
+      opacity: st.opacity,
+      bannerText: st.bannerText,
+    });
+  };
+  const call = async (target: string, payload: Record<string, unknown>): Promise<Hook> => {
+    try {
+      const r = await sendWebhook({ data: { url: target, payload } });
+      return r.ok
+        ? { state: "ok", msg: `Enviado a Make ✅ (${r.status})` }
+        : { state: "error", msg: `Error ❌ ${r.status || ""} ${r.body}`.trim() };
+    } catch (e) {
+      return { state: "error", msg: `Error ❌ ${e instanceof Error ? e.message : "desconocido"}` };
+    }
+  };
+  const save = () => {
+    const v = url.trim();
+    if (v && !/^https:\/\/.+/.test(v)) {
+      toast.error("La URL debe comenzar con https://");
+      return;
+    }
+    if (v) localStorage.setItem(WEBHOOK_KEY, v);
+    else localStorage.removeItem(WEBHOOK_KEY);
+    setSavedUrl(v);
+    toast.success(v ? "Webhook guardado: publicación real activada" : "Webhook eliminado: modo demo");
+  };
+  const testConnection = async () => {
+    if (!/^https:\/\/.+/.test(url.trim())) {
+      toast.error("Ingresa una URL https:// válida");
+      return;
+    }
+    setTest({ state: "sending", msg: "Enviando..." });
+    const r = await call(url.trim(), { ...payloadFor(null), test: true });
+    setTest(r);
+    r.state === "ok" ? toast.success(r.msg) : toast.error(r.msg);
+  };
   const publish = () => {
     if (!accounts.length) {
       toast.error("Selecciona al menos un canal");
@@ -36,11 +95,57 @@ export function Publisher() {
       toast.error("Elige una fecha y hora futura");
       return;
     }
+    if (savedUrl) {
+      void sendReal();
+      return;
+    }
+    runDemo();
+  };
+  const sendReal = async () => {
+    setHook({ state: "sending", msg: "Enviando..." });
+    setOpen(true);
+    const r = await call(
+      savedUrl,
+      payloadFor(mode === "later" ? `${date}T${time}:00-03:00` : null),
+    );
+    setHook(r);
+    if (r.state === "ok") {
+      addPost();
+      toast.success(r.msg);
+    } else toast.error(r.msg);
+  };
+  const addPost = () => {
+    const now = new Date(Date.now() - 3 * 60 * 60 * 1000);
+    const postDate = mode === "later" ? date : now.toISOString().slice(0, 10);
+    const day = (new Date(`${postDate}T12:00:00Z`).getUTCDay() + 6) % 7;
+    const state = useStudio.getState();
+    state.update({
+      points: state.points + 5,
+      posts: [
+        {
+          id: crypto.randomUUID(),
+          title: state.hook.replace(/\n/g, " "),
+          status: mode === "later" ? "scheduled" : "published",
+          day,
+          date: postDate,
+          time: mode === "later" ? time : now.toISOString().slice(11, 16),
+          image: "burger",
+          views: "—",
+          likes: 0,
+          comments: 0,
+          channels: accounts,
+        },
+        ...state.posts,
+      ],
+    });
+  };
+  const runDemo = () => {
+    setHook({ state: "idle" });
     setOpen(true);
     setStage(0);
-    // TODO: Connect to Make.com webhook for FFmpeg render.
-    // Future: authorize accounts with Meta Graph API; never treat mock connection status as OAuth.
+    // Demo mode (no webhook configured).
     let i = 0;
+
     const timer = setInterval(() => {
       i++;
       setStage(i);
