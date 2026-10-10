@@ -189,7 +189,30 @@ export function Publisher() {
           <Send size={15} />
           <h2>Un video. Más alcance.</h2>
         </div>
-        <span className="simulation-label">Publicación simulada</span>
+        <span className="simulation-label">
+          {savedUrl ? "Webhook real activo" : "Publicación simulada"}
+        </span>
+      </div>
+      <div className="webhook-config" style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center", margin: "0 0 14px" }}>
+        <input
+          aria-label="Webhook URL"
+          type="url"
+          placeholder="https://hook.make.com/..."
+          value={url}
+          onChange={(e) => setUrl(e.target.value)}
+          className="bg-input/30 border border-border rounded-md px-3 py-2 text-sm text-foreground"
+          style={{ flex: "1 1 260px", minWidth: 0 }}
+        />
+        <Button variant="outline" size="sm" onClick={testConnection} disabled={test.state === "sending"}>
+          {test.state === "sending" ? <LoaderCircle className="loading-spin" /> : <Check />}
+          Probar conexión
+        </Button>
+        <Button size="sm" onClick={save}>Guardar</Button>
+        {test.msg && (
+          <small className={test.state === "error" ? "text-destructive" : "text-muted-foreground"} style={{ flexBasis: "100%" }}>
+            {test.msg}
+          </small>
+        )}
       </div>
       <div className="publisher-content">
         <div className="channel-options">
