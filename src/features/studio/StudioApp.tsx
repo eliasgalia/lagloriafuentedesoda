@@ -260,7 +260,7 @@ export function StudioApp({ view = "studio" }: { view?: "studio" | "library" | "
                 />
                 <CopyPanel />
               </div>
-              <Publisher fileName={fileName} />
+              <Publisher fileName={fileName} source={source} />
             </>
           ) : view === "library" ? (
             <MediaLibrary onEdit={newEdit} />
