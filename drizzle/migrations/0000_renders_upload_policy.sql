@@ -1,0 +1,1 @@
+CREATE POLICY "Public can upload reels to renders" ON storage.objects FOR INSERT TO anon, authenticated WITH CHECK (bucket_id = 'renders' AND (storage.foldername(name))[1] = 'reels' AND lower(storage.extension(name)) IN ('mp4','webm'));
