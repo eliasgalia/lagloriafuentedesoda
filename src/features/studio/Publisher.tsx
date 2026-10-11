@@ -18,7 +18,13 @@ import { brandConfig } from "./brandConfig";
 import { useStudio } from "./store";
 import { useEffect } from "react";
 import { WEBHOOK_KEY, buildPayload, isValidWebhook, sendWebhook } from "./webhook";
-export function Publisher({ fileName = "la_gloria_reel.mp4" }: { fileName?: string }) {
+export function Publisher({
+  fileName = "la_gloria_reel.mp4",
+  source = brandConfig.demoVideo,
+}: {
+  fileName?: string;
+  source?: string;
+}) {
   const s = useStudio();
   const [accounts, setAccounts] = useState(["Instagram", "TikTok"]),
     [mode, setMode] = useState<"now" | "later">("now"),
@@ -90,27 +96,43 @@ export function Publisher({ fileName = "la_gloria_reel.mp4" }: { fileName?: stri
   };
   const sendReal = async () => {
     setWh("sending");
-    setWhMsg("");
+    setWhMsg("Renderizando video con logo… 0%");
     const st = useStudio.getState();
     try {
-      const code = await sendWebhook(
-        savedUrl,
-        buildPayload({
-          hook: st.hook,
-          caption: st.caption,
-          hashtags: st.hashtags,
-          channels: accounts,
-          mode,
-          date,
-          time,
-          fileName,
-          x: st.x,
-          y: st.y,
-          size: st.size,
-          opacity: st.opacity,
-          bannerText: st.bannerText,
-        }),
+      const { renderBrandedVideo } = await import("./renderer");
+      const { blob, ext } = await renderBrandedVideo(source, brandConfig.logo, st, (p) =>
+        setWhMsg(`Renderizando video con logo… ${p}%`),
       );
+      setWhMsg("Subiendo video a la nube…");
+      const { createUploadSlot, getVideoUrl } = await import("./upload.functions");
+      const { supabase } = await import("@/integrations/supabase/client");
+      const slot = await createUploadSlot({ data: { ext } });
+      const up = await supabase.storage
+        .from("renders")
+        .uploadToSignedUrl(slot.path, slot.token, blob, { contentType: blob.type });
+      if (up.error) throw new Error(`Subida falló: ${up.error.message}`);
+      const { url: videoUrl } = await getVideoUrl({ data: { path: slot.path } });
+      setWhMsg("Enviando a Make…");
+      const payload = buildPayload({
+        hook: st.hook,
+        caption: st.caption,
+        hashtags: st.hashtags,
+        channels: accounts,
+        mode,
+        date,
+        time,
+        fileName: slot.path.split("/").pop() ?? fileName,
+        x: st.x,
+        y: st.y,
+        size: st.size,
+        opacity: st.opacity,
+        bannerText: st.bannerText,
+      });
+      const code = await sendWebhook(savedUrl, {
+        ...payload,
+        video: { ...payload.video, url: videoUrl, mimeType: blob.type },
+        videoUrl,
+      });
       setWh("ok");
       setWhMsg(`Respuesta ${code}`);
       addPost();

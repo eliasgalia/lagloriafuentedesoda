@@ -1,0 +1,1 @@
+DROP POLICY IF EXISTS "Public can upload reels to renders" ON storage.objects;
