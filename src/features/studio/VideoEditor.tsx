@@ -23,7 +23,7 @@ import {
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { brandConfig } from "./brandConfig";
-import { useStudio } from "./store";
+import { useStudio, useBrand } from "./store";
 import { Range, Toggle, Field } from "./Controls";
 const time = (v: number) =>
   `${Math.floor(v / 60)
@@ -34,6 +34,7 @@ const time = (v: number) =>
 type Props = { src: string; fileName: string; onVideo: (url: string, name: string) => void };
 export function VideoEditor({ src, fileName, onVideo }: Props) {
   const s = useStudio();
+  const brand = useBrand();
   const video = useRef<HTMLVideoElement>(null);
   const canvas = useRef<HTMLDivElement>(null);
   const logoNode = useRef<HTMLDivElement>(null);
@@ -164,8 +165,8 @@ export function VideoEditor({ src, fileName, onVideo }: Props) {
           <div className="phone" ref={canvas}>
             <video
               ref={video}
-              src={src}
-              poster={brandConfig.poster}
+              src={src || undefined}
+              poster={brand.poster}
               playsInline
               muted={muted}
               loop
@@ -200,8 +201,8 @@ export function VideoEditor({ src, fileName, onVideo }: Props) {
                   aria-label="Logo arrastrable"
                 >
                   <img
-                    src={customLogo ?? brandConfig.logo}
-                    alt="La Gloria, desde 2020"
+                    src={customLogo ?? brand.logo}
+                    alt={brand.name}
                     draggable={false}
                     style={{ opacity: s.opacity / 100, transform: `rotate(${s.rotation}deg)` }}
                   />
@@ -231,14 +232,14 @@ export function VideoEditor({ src, fileName, onVideo }: Props) {
               </div>
             )}
             <div className="reel-account">
-              <img src={brandConfig.logo} alt="" />
-              <b>lagloriafuentedesoda</b>
+              <img src={brand.logo} alt="" />
+              <b>{brand.handles.instagram.replace(/^@/, "") || brand.name}</b>
               <span>Seguir</span>
             </div>
             <div className="reel-caption">
-              El sabor de Franklin, en grande. 🍔🔥
+              {s.caption.split("\n")[0]}
               <br />
-              <span>♫ Sonido original · La Gloria</span>
+              <span>♫ Sonido original · {brand.name}</span>
             </div>
             {!playing && (
               <Button
@@ -341,10 +342,10 @@ export function VideoEditor({ src, fileName, onVideo }: Props) {
               </div>
               <div className="logo-upload">
                 <div className="logo-thumbnail">
-                  <img src={customLogo ?? brandConfig.logo} alt="Logo La Gloria" />
+                  <img src={customLogo ?? brand.logo} alt={`Logo ${brand.name}`} />
                 </div>
                 <div>
-                  <b>{customLogo ? "Logo personalizado" : "La Gloria"}</b>
+                  <b>{customLogo ? "Logo personalizado" : brand.name}</b>
                   <span>PNG · Fondo transparente</span>
                   <Button variant="ghost" size="sm" onClick={() => logoInput.current?.click()}>
                     <ImagePlus />
@@ -494,10 +495,10 @@ export function VideoEditor({ src, fileName, onVideo }: Props) {
                 onChange={(e) => s.update({ bannerText: e.target.value })}
               >
                 <option value="" disabled>
-                  Frases de La Gloria
+                  Frases de {brand.name}
                 </option>
-                <option>📍 Barrio Franklin, Santiago</option>
-                <option>🔥 Sándwiches Gigantes Desde 2020</option>
+                <option>{brand.location ? `📍 ${brand.location}` : brand.name}</option>
+                {brand.id === "lagloriafuentedesoda" && <option>🔥 Sándwiches Gigantes Desde 2020</option>}
               </select>
               <Field label="Fondo del banner">
                 <div className="swatch-row">
@@ -548,13 +549,13 @@ export function VideoEditor({ src, fileName, onVideo }: Props) {
           if (file) upload(file);
         }}
       >
-        <img src={brandConfig.poster} alt="Clip de hamburguesa" />
+        <img src={brand.poster} alt="Clip de hamburguesa" />
         <div>
           <b>{fileName}</b>
           <span>
             <Film size={12} />
             {time(duration)} <span>·</span> MP4 <span>·</span>{" "}
-            {src === brandConfig.demoVideo ? "Demo ilustrativo" : "Video original"}
+            {src === brand.demoVideo ? "Demo ilustrativo" : "Video original"}
           </span>
         </div>
         <Button variant="outline" size="sm" onClick={() => fileInput.current?.click()}>

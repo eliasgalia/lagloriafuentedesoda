@@ -16,7 +16,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { brandConfig } from "./brandConfig";
-import { useStudio, type Post } from "./store";
+import { useStudio, useBrand, type Post } from "./store";
 export function matchesCalendarDate(post: Post, date: Date, week: number, day: number) {
   const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
   return post.date ? post.date === key : week === 0 && post.day === day;
@@ -39,6 +39,7 @@ function Detail({
   onClose: () => void;
   onEdit: () => void;
 }) {
+  const brand = useBrand();
   return (
     <Dialog
       open={!!post}
@@ -56,8 +57,8 @@ function Detail({
             <video
               controls
               playsInline
-              src={brandConfig.demoVideo}
-              poster={post.image === "burger" ? brandConfig.poster : brandConfig.griddle}
+              src={brand.demoVideo}
+              poster={post.image === "burger" ? brand.poster : brand.griddle}
             />
             <div className="flex justify-between">
               <Status status={post.status} />
@@ -80,6 +81,7 @@ function Detail({
 }
 export function MediaLibrary({ onEdit }: { onEdit: () => void }) {
   const s = useStudio();
+  const brand = useBrand();
   const [filter, setFilter] = useState("all"),
     [selected, setSelected] = useState<Post | null>(null);
   const posts = s.posts.filter((p) => filter === "all" || p.status === filter);
@@ -119,7 +121,7 @@ export function MediaLibrary({ onEdit }: { onEdit: () => void }) {
         </div>
         <span>
           <Filter size={14} />
-          {posts.length} videos · La Gloria
+          {posts.length} videos · {brand.name}
         </span>
       </div>
       <div className="media-grid">
@@ -127,14 +129,14 @@ export function MediaLibrary({ onEdit }: { onEdit: () => void }) {
           <article className="media-card" key={post.id}>
             <div className="media-cover">
               <img
-                src={post.image === "burger" ? brandConfig.poster : brandConfig.griddle}
+                src={post.image === "burger" ? brand.poster : brand.griddle}
                 width={1024}
                 height={1536}
                 loading="lazy"
                 alt={post.title}
               />
               <video
-                src={brandConfig.demoVideo}
+                src={brand.demoVideo}
                 muted
                 loop
                 playsInline
@@ -162,7 +164,7 @@ export function MediaLibrary({ onEdit }: { onEdit: () => void }) {
             </div>
             <div className="media-card-content">
               <h3>{post.title}</h3>
-              <span className="tiny-muted">La Gloria · {post.time} hrs</span>
+              <span className="tiny-muted">{brand.name} · {post.time} hrs</span>
               <div className="media-stats">
                 <span>
                   <Eye />
@@ -188,6 +190,7 @@ export function MediaLibrary({ onEdit }: { onEdit: () => void }) {
 }
 export function ContentCalendar({ onEdit }: { onEdit: () => void }) {
   const s = useStudio();
+  const brand = useBrand();
   const [week, setWeek] = useState(0),
     [selected, setSelected] = useState<Post | null>(null);
   const today = new Date();
@@ -207,7 +210,7 @@ export function ContentCalendar({ onEdit }: { onEdit: () => void }) {
           <h1>
             Calendario de contenido<span>.</span>
           </h1>
-          <p>La próxima semana de La Gloria, con todo su sabor.</p>
+          <p>La próxima semana de {brand.name}.</p>
         </div>
         <Button onClick={onEdit}>
           <Plus />
@@ -264,7 +267,7 @@ export function ContentCalendar({ onEdit }: { onEdit: () => void }) {
                       onClick={() => setSelected(post)}
                     >
                       <img
-                        src={post.image === "burger" ? brandConfig.poster : brandConfig.griddle}
+                        src={post.image === "burger" ? brand.poster : brand.griddle}
                         alt=""
                       />
                       <span className="calendar-post-body">

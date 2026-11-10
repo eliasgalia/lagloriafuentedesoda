@@ -15,9 +15,9 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { brandConfig } from "./brandConfig";
-import { useStudio } from "./store";
+import { useStudio, useBrand } from "./store";
 import { useEffect } from "react";
-import { WEBHOOK_KEY, buildPayload, isValidWebhook, sendWebhook } from "./webhook";
+import { buildPayload, isValidWebhook, sendWebhook } from "./webhook";
 export function Publisher({
   fileName = "la_gloria_reel.mp4",
   source = brandConfig.demoVideo,
@@ -26,8 +26,10 @@ export function Publisher({
   source?: string;
 }) {
   const s = useStudio();
-  const [accounts, setAccounts] = useState(["Instagram", "TikTok"]),
-    [mode, setMode] = useState<"now" | "later">("now"),
+  const brand = useBrand();
+  const accounts = s.channels;
+  const setAccounts = (channels: string[]) => s.update({ channels });
+  const [mode, setMode] = useState<"now" | "later">("now"),
     [date, setDate] = useState(""),
     [time, setTime] = useState("13:00"),
     [open, setOpen] = useState(false),
@@ -38,18 +40,19 @@ export function Publisher({
     [wh, setWh] = useState<"idle" | "sending" | "ok" | "error">("idle"),
     [whMsg, setWhMsg] = useState("");
   useEffect(() => {
-    const v = localStorage.getItem(WEBHOOK_KEY) ?? "";
+    const v = brand.webhookUrl;
     setHookUrl(v);
     setSavedUrl(v);
-  }, []);
+  }, [brand.webhookUrl]);
   const saveUrl = () => {
     const v = hookUrl.trim();
     if (v && !isValidWebhook(v)) {
       toast.error("La URL debe empezar con https://");
       return;
     }
-    if (v) localStorage.setItem(WEBHOOK_KEY, v);
-    else localStorage.removeItem(WEBHOOK_KEY);
+    const client = s.clients.find((c) => c.id === brand.id);
+    if (!client) return;
+    s.saveClient({ ...client, webhookUrl: v });
     setSavedUrl(v);
     toast.success(v ? "Webhook guardado" : "Webhook eliminado · modo demo");
   };
@@ -59,13 +62,15 @@ export function Publisher({
       toast.error("Ingresa una URL https:// válida");
       return;
     }
+    s.setBusy(true);
     setTesting(true);
     try {
-      const code = await sendWebhook(v, { source: "galia-studio-v1", test: true });
+      const code = await sendWebhook(v, { source: "galia-studio-v1", test: true, brand: brand.id, identity: { name: brand.name, handles: brand.handles } });
       toast.success(`Conexión OK (${code})`);
     } catch (e) {
       toast.error(`Error ❌ ${e instanceof Error ? e.message : ""}`);
     } finally {
+      s.setBusy(false);
       setTesting(false);
     }
   };
@@ -95,12 +100,13 @@ export function Publisher({
     });
   };
   const sendReal = async () => {
+    s.setBusy(true);
     setWh("sending");
     setWhMsg("Renderizando video con logo… 0%");
     const st = useStudio.getState();
     try {
       const { renderBrandedVideo } = await import("./renderer");
-      const { blob, ext } = await renderBrandedVideo(source, brandConfig.logo, st, (p) =>
+      const { blob, ext } = await renderBrandedVideo(source, brand.logo, st, (p) =>
         setWhMsg(`Renderizando video con logo… ${p}%`),
       );
       setWhMsg("Subiendo video a la nube…");
@@ -114,6 +120,8 @@ export function Publisher({
       const { url: videoUrl } = await getVideoUrl({ data: { path: slot.path } });
       setWhMsg("Enviando a Make…");
       const payload = buildPayload({
+        brand: brand.id,
+        identity: { name: brand.name, logo: brand.logo, colors: brand.colors, handles: brand.handles },
         hook: st.hook,
         caption: st.caption,
         hashtags: st.hashtags,
@@ -140,9 +148,11 @@ export function Publisher({
     } catch (e) {
       setWh("error");
       setWhMsg(e instanceof Error ? e.message : "Error desconocido");
-    }
+    } finally { s.setBusy(false); }
   };
   const publish = () => {
+    if (s.busy) return;
+    if (savedUrl && !source) { toast.error("Sube un video antes de publicar"); return; }
     if (!accounts.length) {
       toast.error("Selecciona al menos un canal");
       return;
@@ -161,6 +171,7 @@ export function Publisher({
       return;
     }
     setWh("idle");
+    s.setBusy(true);
     setStage(0);
     let i = 0;
     const timer = setInterval(() => {
@@ -168,6 +179,7 @@ export function Publisher({
       setStage(i);
       if (i === 3) {
         clearInterval(timer);
+        s.setBusy(false);
         addPost();
         toast.success(
           mode === "later"
@@ -192,9 +204,9 @@ export function Publisher({
       <div className="publisher-content">
         <div className="channel-options">
           {[
-            { name: "Instagram", handle: brandConfig.handles.instagram, icon: Instagram },
-            { name: "TikTok", handle: brandConfig.handles.tiktok, icon: Music2 },
-            { name: "Facebook", handle: "Página La Gloria", icon: Facebook },
+            { name: "Instagram", handle: brand.handles.instagram, icon: Instagram },
+            { name: "TikTok", handle: brand.handles.tiktok, icon: Music2 },
+            { name: "Facebook", handle: brand.handles.facebook || "Sin cuenta", icon: Facebook },
           ].map(({ name, handle, icon: Icon }) => (
             <label
               className={`channel-option ${accounts.includes(name) ? "channel-checked" : ""} ${name === "Facebook" ? "channel-pending" : ""}`}
@@ -202,7 +214,7 @@ export function Publisher({
             >
               <input
                 type="checkbox"
-                disabled={name === "Facebook"}
+                disabled={s.busy || !handle}
                 checked={accounts.includes(name)}
                 onChange={(e) =>
                   setAccounts(
@@ -262,7 +274,7 @@ export function Publisher({
           <span className="timezone">
             Santiago, Chile <span>UTC −03:00</span>
           </span>
-          <Button className="publish-button" onClick={publish} disabled={open && stage < 3}>
+          <Button className="publish-button" onClick={publish} disabled={s.busy}>
             {mode === "later" ? <CalendarClock /> : <Send />}
             {mode === "later" ? "Programar contenido" : "Publicar contenido"}
             <ArrowRight />
@@ -281,11 +293,11 @@ export function Publisher({
           onChange={(e) => setHookUrl(e.target.value)}
           className="h-9 min-w-[260px] flex-1 rounded-md border border-input bg-background px-3 text-sm"
         />
-        <Button variant="outline" size="sm" onClick={testUrl} disabled={testing}>
+        <Button variant="outline" size="sm" onClick={testUrl} disabled={s.busy}>
           {testing ? <LoaderCircle className="loading-spin" /> : <Send />}
           Probar conexión
         </Button>
-        <Button size="sm" onClick={saveUrl}>
+        <Button size="sm" onClick={saveUrl} disabled={s.busy}>
           <Check />
           Guardar
         </Button>

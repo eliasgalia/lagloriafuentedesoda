@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { Link, useLocation } from "@tanstack/react-router";
 import {
   Clapperboard,
@@ -21,7 +21,8 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Toaster } from "@/components/ui/sonner";
 import { brandConfig } from "./brandConfig";
-import { useStudio } from "./store";
+import { useStudio, useBrand } from "./store";
+import { ClientSwitcher } from "./ClientSwitcher";
 import { VideoEditor } from "./VideoEditor";
 import { CopyPanel } from "./CopyPanel";
 import { Publisher } from "./Publisher";
@@ -29,6 +30,8 @@ import { MediaLibrary, ContentCalendar } from "./CollectionViews";
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 export function StudioApp({ view = "studio" }: { view?: "studio" | "library" | "calendar" }) {
   const s = useStudio();
+  const brand = useBrand();
+  const shell = useRef<HTMLDivElement>(null);
   const [collapsed, setCollapsed] = useState(false),
     [source, setSource] = useState(brandConfig.demoVideo),
     [fileName, setFileName] = useState("la_gloria_hamburguesa.mp4"),
@@ -38,7 +41,7 @@ export function StudioApp({ view = "studio" }: { view?: "studio" | "library" | "
     [brandMenu, setBrandMenu] = useState(false);
   const location = useLocation();
   useEffect(() => {
-    useStudio.persist.rehydrate();
+    Promise.resolve(useStudio.persist.rehydrate()).then(() => useStudio.getState().migrateWebhook());
   }, []);
   useEffect(
     () => () => {
@@ -46,16 +49,29 @@ export function StudioApp({ view = "studio" }: { view?: "studio" | "library" | "
     },
     [source],
   );
+  useEffect(() => {
+    setSource(brand.demoVideo);
+    setFileName(brand.demoVideo ? "la_gloria_hamburguesa.mp4" : "Sin video");
+  }, [brand.id]);
+  useEffect(() => {
+    const el = shell.current;
+    if (!el) return;
+    el.style.setProperty("--primary", brand.colors.primary);
+    el.style.setProperty("--success", brand.colors.agency);
+    el.style.setProperty("--gold", brand.colors.gold);
+  }, [brand.colors.primary, brand.colors.agency, brand.colors.gold]);
   const download = async () => {
+    if (!source || s.busy) return;
+    s.setBusy(true);
     setExporting(true);
     setRenderPct(0);
     try {
       const { renderBrandedVideo } = await import("./renderer");
-      const { blob, ext } = await renderBrandedVideo(source, brandConfig.logo, s, setRenderPct);
+      const { blob, ext } = await renderBrandedVideo(source, brand.logo, s, setRenderPct);
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `la-gloria-reel-${fileName.replace(/\.\w+$/, "")}.${ext}`;
+      a.download = `${brand.id}-reel-${fileName.replace(/\.\w+$/, "")}.${ext}`;
       a.click();
       setTimeout(() => URL.revokeObjectURL(url), 2000);
       toast.success("¡Video con marca listo!", {
@@ -64,6 +80,7 @@ export function StudioApp({ view = "studio" }: { view?: "studio" | "library" | "
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "No se pudo renderizar el video.");
     } finally {
+      s.setBusy(false);
       setExporting(false);
       setRenderPct(null);
     }
@@ -72,7 +89,7 @@ export function StudioApp({ view = "studio" }: { view?: "studio" | "library" | "
     window.location.href = "/";
   };
   return (
-    <div className={`app-shell ${collapsed ? "sidebar-collapsed" : ""}`}>
+    <div ref={shell} className={`app-shell ${collapsed ? "sidebar-collapsed" : ""}`}>
       <aside className="app-sidebar">
         <Link to="/" className="agency-logo" aria-label="Galia Studio">
           <span className="agency-symbol">
@@ -86,36 +103,7 @@ export function StudioApp({ view = "studio" }: { view?: "studio" | "library" | "
           )}
         </Link>
         <div className="workspace-label">WORKSPACE</div>
-        <div className="brand-switch-wrap">
-          <Button
-            variant="ghost"
-            className="brand-switch"
-            onClick={() => setBrandMenu(!brandMenu)}
-            title="Workspace La Gloria"
-          >
-            <img src={brandConfig.logo} alt="La Gloria" />
-            {!collapsed && (
-              <>
-                <span>
-                  <b>La Gloria</b>
-                  <small>Fuente de Soda · Franklin</small>
-                </span>
-                <ChevronsUpDown size={14} />
-              </>
-            )}
-          </Button>
-          {brandMenu && (
-            <div className="brand-menu">
-              <b>Tu workspace</b>
-              <span>
-                <img src={brandConfig.logo} alt="" />
-                La Gloria
-                <Check size={14} />
-              </span>
-              <small>Más marcas próximamente</small>
-            </div>
-          )}
-        </div>
+        <ClientSwitcher collapsed={collapsed} />
         <div className="nav-label">CREA & CONECTA</div>
         <nav>
           {[
@@ -188,7 +176,7 @@ export function StudioApp({ view = "studio" }: { view?: "studio" | "library" | "
       <div className="app-main">
         <header className="topbar">
           <div className="breadcrumbs">
-            <span>La Gloria</span>
+            <span>{brand.name}</span>
             <span>/</span>
             <b>
               {view === "studio"
@@ -217,15 +205,15 @@ export function StudioApp({ view = "studio" }: { view?: "studio" | "library" | "
                     DEL BARRIO AL FEED
                   </span>
                   <h1>
-                    El próximo reel tiene gloria<span>.</span>
+                    {brand.name}<span>.</span>
                   </h1>
-                  <p>Tu video, la esencia de La Gloria. Listo para compartir.</p>
+                  <p>Tu video, la esencia de tu marca. Listo para compartir.</p>
                 </div>
                 <Button
                   variant="outline"
                   className="export-button"
                   onClick={download}
-                  disabled={exporting}
+                  disabled={exporting || s.busy || !source}
                 >
                   <Download />
                   {exporting ? `Renderizando… ${renderPct ?? 0}%` : "Descargar video con logo"}
@@ -250,7 +238,7 @@ export function StudioApp({ view = "studio" }: { view?: "studio" | "library" | "
                 </div>
               </div>
               <div className="studio-grid">
-                <VideoEditor
+                <VideoEditor key={brand.id}
                   src={source}
                   fileName={fileName}
                   onVideo={(url, name) => {
@@ -258,14 +246,14 @@ export function StudioApp({ view = "studio" }: { view?: "studio" | "library" | "
                     setFileName(name);
                   }}
                 />
-                <CopyPanel />
+                <CopyPanel key={brand.id} />
               </div>
-              <Publisher fileName={fileName} source={source} />
+              <Publisher key={brand.id} fileName={fileName} source={source} />
             </>
           ) : view === "library" ? (
-            <MediaLibrary onEdit={newEdit} />
+            <MediaLibrary key={brand.id} onEdit={newEdit} />
           ) : (
-            <ContentCalendar onEdit={newEdit} />
+            <ContentCalendar key={brand.id} onEdit={newEdit} />
           )}
           <footer>
             <span>

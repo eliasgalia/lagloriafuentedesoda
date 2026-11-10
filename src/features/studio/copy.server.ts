@@ -13,7 +13,7 @@ export class CopyError extends Error {
   }
 }
 
-export async function generateAiCopy(event: string, tone: string): Promise<AiCopy> {
+export async function generateAiCopy(event: string, tone: string, context?: string, isGloria = true): Promise<AiCopy> {
   const apiKey = process.env["LOVABLE_API_KEY"];
   if (!apiKey) throw new CopyError("La IA no está configurada.", 401);
   let runId: string | undefined;
@@ -33,7 +33,7 @@ export async function generateAiCopy(event: string, tone: string): Promise<AiCop
   });
   const result = streamText({
     model: provider.responses("openai/gpt-6-astra"),
-    system: `Eres el copywriter de redes sociales de ${brandSnapshot}. Escribes en español chileno para Reels/TikTok. Responde SOLO con JSON válido: {"hook": string, "caption": string, "hashtags": string}. hook: máximo 60 caracteres, en MAYÚSCULAS, magnético, con signos ¿?! o emoji. caption: 4-5 líneas separadas por \\n, con emojis, referencias locales (Barrio Franklin, Santiago) y cierre con CTA a pedir por WhatsApp. hashtags: 6-8 hashtags separados por espacio, incluye siempre #LaGloriaFranklin #BarrioFranklin #GaliaDigital. No inventes precios ni teléfonos.`,
+    system: `Eres el copywriter de redes sociales de ${context ?? brandSnapshot}. Escribes en español chileno para Reels/TikTok. Responde SOLO con JSON válido: {"hook": string, "caption": string, "hashtags": string}. hook: máximo 60 caracteres, en MAYÚSCULAS, magnético, con signos ¿?! o emoji. caption: 4-5 líneas separadas por \\n, con emojis, referencias locales solo si se conocen y cierre con CTA apropiado para la marca. hashtags: 6-8 hashtags separados por espacio, incluye ${isGloria ? "#LaGloriaFranklin #BarrioFranklin #GaliaDigital" : "#GaliaDigital y hashtags relevantes a esta marca, sin referencias a La Gloria"}. No inventes precios ni teléfonos.`,
     prompt: `Tipo de contenido: ${event}. Tono de voz: ${tone}. Crea una versión nueva y original.`,
     providerOptions: {
       openai: {
