@@ -1,6 +1,8 @@
 export const WEBHOOK_KEY = "galia_webhook_url";
 
 export type PayloadInput = {
+  brand?: string;
+  identity?: { name: string; logo: string; colors: { primary: string; agency: string; gold: string }; handles: { instagram: string; tiktok: string; facebook: string } };
   hook: string;
   caption: string;
   hashtags: string;
@@ -23,7 +25,8 @@ export function logoPosition(x: number, y: number) {
 
 export function buildPayload(i: PayloadInput) {
   return {
-    brand: "lagloriafuentedesoda",
+    brand: i.brand ?? "lagloriafuentedesoda",
+    ...(i.identity ? { identity: i.identity } : {}),
     hook: i.hook,
     caption: i.caption,
     hashtags: i.hashtags.split(/\s+/).filter((h) => h.startsWith("#")),
