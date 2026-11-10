@@ -15,7 +15,6 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { brandConfig } from "./brandConfig";
 import { useStudio, useBrand, type Post } from "./store";
 export function matchesCalendarDate(post: Post, date: Date, week: number, day: number) {
   const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;

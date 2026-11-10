@@ -3,16 +3,16 @@ import { StudioApp } from "@/features/studio/StudioApp";
 export const Route = createFileRoute("/library")({
   head: () => ({
     meta: [
-      { title: "Biblioteca de La Gloria | Galia Studio" },
+      { title: "Biblioteca de clientes | Galia Studio" },
       {
         name: "description",
         content:
-          "Clips, reels y videos de marca de La Gloria: organiza tu contenido y revisa tus resultados de demostración.",
+          "Organiza clips, reels y videos de cada cliente de Galia Digital y revisa sus resultados de demostración.",
       },
-      { property: "og:title", content: "Biblioteca de La Gloria | Galia Studio" },
+      { property: "og:title", content: "Biblioteca de clientes | Galia Studio" },
       {
         property: "og:description",
-        content: "El archivo creativo de La Gloria, Fuente de Soda de Barrio Franklin.",
+        content: "El archivo creativo de cada marca en Galia Studio.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },

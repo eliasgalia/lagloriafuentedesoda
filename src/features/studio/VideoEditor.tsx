@@ -22,7 +22,6 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { brandConfig } from "./brandConfig";
 import { useStudio, useBrand } from "./store";
 import { Range, Toggle, Field } from "./Controls";
 const time = (v: number) =>

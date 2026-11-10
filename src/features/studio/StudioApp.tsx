@@ -4,18 +4,14 @@ import {
   Clapperboard,
   Library,
   CalendarDays,
-  ChevronsUpDown,
   PanelLeftClose,
   PanelLeftOpen,
   ArrowUpRight,
   Download,
-  ChevronDown,
   Sparkles,
   Check,
   CircleHelp,
-  X,
   Zap,
-  Command,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -37,8 +33,7 @@ export function StudioApp({ view = "studio" }: { view?: "studio" | "library" | "
     [fileName, setFileName] = useState("la_gloria_hamburguesa.mp4"),
     [exporting, setExporting] = useState(false),
     [renderPct, setRenderPct] = useState<number | null>(null),
-    [help, setHelp] = useState(false),
-    [brandMenu, setBrandMenu] = useState(false);
+    [help, setHelp] = useState(false);
   const location = useLocation();
   useEffect(() => {
     Promise.resolve(useStudio.persist.rehydrate()).then(() => useStudio.getState().migrateWebhook());
