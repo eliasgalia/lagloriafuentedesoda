@@ -233,7 +233,7 @@ export function StudioApp({ view = "studio" }: { view?: "studio" | "library" | "
                 </div>
               </div>
               <div className="studio-grid">
-                <VideoEditor key={brand.id}
+                <VideoEditor key={`editor-${brand.id}`}
                   src={source}
                   fileName={fileName}
                   onVideo={(url, name) => {
@@ -241,7 +241,7 @@ export function StudioApp({ view = "studio" }: { view?: "studio" | "library" | "
                     setFileName(name);
                   }}
                 />
-                <CopyPanel key={brand.id} />
+                <CopyPanel key={`copy-${brand.id}`} />
               </div>
               <Publisher key={brand.id} fileName={fileName} source={source} />
             </>
