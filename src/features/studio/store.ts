@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
+import { defaultClient, resolveBrand, type ClientBrand } from "./brandConfig";
 export type Post = {
   id: string;
   title: string;
@@ -88,6 +89,7 @@ export const initialPosts: Post[] = [
   },
 ];
 type Settings = {
+  channels: string[];
   watermark: boolean;
   size: number;
   opacity: number;
@@ -109,6 +111,7 @@ type Settings = {
   points: number;
 };
 const defaults: Settings = {
+  channels: ["Instagram", "TikTok"],
   watermark: true,
   size: 25,
   opacity: 90,
@@ -132,13 +135,74 @@ const defaults: Settings = {
   points: 120,
 };
 // MVP persistence is local only. Future: authenticated storage adapter and Supabase uploads.
-export const useStudio = create<Settings & { update: (value: Partial<Settings>) => void }>()(
-  persist((set) => ({ ...defaults, update: (value) => set(value) }), {
+export function clientDefaults(client: ClientBrand): Settings {
+  if (client.id === defaultClient.id) return { ...defaults };
+  return { ...defaults, posts: [], points: 0, channels: [],
+    hook: "", caption: "", hashtags: "", hookEnabled: false,
+    bannerText: client.location ? `📍 ${client.location}` : client.name,
+    event: "Producto destacado", tone: "Divertido & Cercano" };
+}
+
+function settingsSnapshot(state: Settings): Settings {
+  return Object.fromEntries(Object.keys(defaults).map((key) => [key, state[key as keyof Settings]])) as Settings;
+}
+
+type StudioState = Settings & {
+  clients: ClientBrand[];
+  activeClientId: string;
+  clientSettings: Record<string, Settings>;
+  busy: boolean;
+  update: (value: Partial<Settings>, clientId?: string) => void;
+  setBusy: (busy: boolean) => void;
+  saveClient: (client: ClientBrand) => void;
+  switchClient: (id: string) => void;
+  migrateWebhook: () => void;
+};
+
+export const useStudio = create<StudioState>()(
+  persist((set, get) => ({ ...defaults,
+    clients: [defaultClient], activeClientId: defaultClient.id, clientSettings: {}, busy: false,
+    setBusy: (busy) => set({ busy }),
+    update: (value, clientId) => {
+      const state = get();
+      if (!clientId || clientId === state.activeClientId) set(value);
+      else {
+        const client = state.clients.find((c) => c.id === clientId);
+        if (client) set({ clientSettings: { ...state.clientSettings, [clientId]: {
+          ...(state.clientSettings[clientId] ?? clientDefaults(client)), ...value,
+        } } });
+      }
+    },
+    saveClient: (client) => {
+      if (get().busy) return;
+      set((state) => ({ clients: state.clients.some((c) => c.id === client.id)
+        ? state.clients.map((c) => c.id === client.id ? client : c)
+        : [...state.clients, client] }));
+    },
+    switchClient: (id) => {
+      const state = get();
+      const client = state.clients.find((c) => c.id === id);
+      if (!client || state.busy || id === state.activeClientId) return;
+      set({ ...clientDefaults(client), ...state.clientSettings[id], activeClientId: id,
+        clientSettings: { ...state.clientSettings, [state.activeClientId]: settingsSnapshot(state) } });
+    },
+    migrateWebhook: () => {
+      const legacy = localStorage.getItem("galia_webhook_url");
+      const client = get().clients.find((c) => c.id === defaultClient.id);
+      if (legacy && client && !client.webhookUrl) get().saveClient({ ...client, webhookUrl: legacy });
+      if (legacy) localStorage.removeItem("galia_webhook_url");
+    },
+  }), {
     name: "galia-la-gloria-v1",
     storage: createJSONStorage(() => localStorage),
     skipHydration: true,
+    partialize: ({ busy: _busy, ...state }) => state,
   }),
 );
+export function useBrand() {
+  const client = useStudio((state) => state.clients.find((c) => c.id === state.activeClientId) ?? defaultClient);
+  return resolveBrand(client);
+}
 export function generateCopy(event: string, tone: string, version: number) {
   const hooks: Record<string, string[]> = {
     "Hamburguesa Estrella": [

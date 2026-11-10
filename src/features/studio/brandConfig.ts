@@ -4,6 +4,17 @@ import compatibleDemo from "@/assets/la-gloria-demo.webm.asset.json";
 import burger from "@/assets/burger-editorial.jpg";
 import griddle from "@/assets/griddle-editorial.jpg";
 
+export type ClientBrand = {
+  id: string;
+  name: string;
+  logo: string;
+  location: string;
+  description: string;
+  colors: { primary: string; agency: string; gold: string };
+  handles: { instagram: string; tiktok: string; facebook: string };
+  webhookUrl: string;
+};
+
 // White-label entry point: replace this configuration for the next agency client.
 export const brandConfig = {
   agency: "Galia Studio",
@@ -23,3 +34,30 @@ export const brandConfig = {
   poster: burger,
   griddle,
 };
+
+export const defaultClient: ClientBrand = {
+  id: "lagloriafuentedesoda",
+  name: brandConfig.name,
+  logo: brandConfig.logo,
+  location: brandConfig.location,
+  description: "Fuente de soda chilena tradicional de sándwiches gigantes y hamburguesas, desde 2020",
+  colors: brandConfig.colors,
+  handles: brandConfig.handles,
+  webhookUrl: "",
+};
+
+export function resolveBrand(client: ClientBrand) {
+  const isGloria = client.id === defaultClient.id;
+  return {
+    ...brandConfig,
+    ...client,
+    fullName: client.name,
+    demoVideo: isGloria ? brandConfig.demoVideo : "",
+    poster: isGloria ? brandConfig.poster : client.logo,
+    griddle: isGloria ? brandConfig.griddle : client.logo,
+  };
+}
+
+export function brandContext(client: ClientBrand) {
+  return `${client.name}. ${client.description}. Ubicación: ${client.location || "no especificada"}. Instagram: ${client.handles.instagram || "no especificado"}.`;
+}

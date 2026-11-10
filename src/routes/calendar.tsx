@@ -3,17 +3,17 @@ import { StudioApp } from "@/features/studio/StudioApp";
 export const Route = createFileRoute("/calendar")({
   head: () => ({
     meta: [
-      { title: "Calendario de La Gloria | Galia Studio" },
+      { title: "Calendario de clientes | Galia Studio" },
       {
         name: "description",
         content:
-          "Planifica la semana de contenido de La Gloria. Revisa reels publicados, programados y borradores.",
+          "Planifica el contenido de cada cliente. Revisa reels publicados, programados y borradores en Galia Studio.",
       },
-      { property: "og:title", content: "Calendario de La Gloria | Galia Studio" },
+      { property: "og:title", content: "Calendario de clientes | Galia Studio" },
       {
         property: "og:description",
         content:
-          "La próxima semana de La Gloria, con todo su sabor: calendario de contenido creativo.",
+          "El calendario de contenido creativo de tus clientes en Galia Digital.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },

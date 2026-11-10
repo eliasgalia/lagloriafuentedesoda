@@ -12,8 +12,10 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { useStudio, generateCopy } from "./store";
+import { useStudio, useBrand, generateCopy } from "./store";
 import { Field } from "./Controls";
+import { brandContext } from "./brandConfig";
+import { useServerFn } from "@tanstack/react-start";
 import { generateCopyAI } from "./copy.functions";
 export async function copyText(value: string) {
   try {
@@ -25,24 +27,28 @@ export async function copyText(value: string) {
 }
 export function CopyPanel() {
   const s = useStudio();
+  const brand = useBrand();
+  const generateAI = useServerFn(generateCopyAI);
   const [loading, setLoading] = useState(false),
     [version, setVersion] = useState(0),
     [copied, setCopied] = useState("");
   const generate = async () => {
+    s.setBusy(true);
     setLoading(true);
     try {
-      const r = await generateCopyAI({ data: { event: s.event, tone: s.tone } });
+      const r = await generateAI({ data: { event: s.event, tone: s.tone, brandContext: brandContext(brand), isGloria: brand.id === "lagloriafuentedesoda" } });
       if (r.ok) {
         s.update({ hook: r.hook, caption: r.caption, hashtags: r.hashtags });
         toast.success("3 ideas listas para tu próximo reel");
       } else {
-        s.update(generateCopy(s.event, s.tone, version));
+        s.update(brand.id === "lagloriafuentedesoda" ? generateCopy(s.event, s.tone, version) : { hook: `DESCUBRE ${brand.name.toUpperCase()}`, caption: `${brand.name}\n${brand.description}\n${brand.location}\nConoce nuestras novedades.\n${brand.handles.instagram}`, hashtags: "#GaliaDigital #Pyme" });
         setVersion((v) => v + 1);
         toast.error(`${r.error} Usamos una plantilla de respaldo.`);
       }
     } catch {
       toast.error("Sin conexión con la IA. Intenta otra vez.");
     } finally {
+      s.setBusy(false);
       setLoading(false);
     }
   };
@@ -71,13 +77,13 @@ export function CopyPanel() {
         </div>
         <Field label="¿Qué vamos a contar?">
           <select value={s.event} onChange={(e) => s.update({ event: e.target.value })}>
-            {[
+            {(brand.id === "lagloriafuentedesoda" ? [
               "Hamburguesa Estrella",
               "Banquetería B2B",
               "Plato del Día",
               "Promo Fin de Semana",
               "Humor / Detrás de Cocina",
-            ].map((v) => (
+            ] : ["Producto destacado", "Servicios", "Promoción", "Novedades", "Detrás de escena"]).map((v) => (
               <option key={v}>{v}</option>
             ))}
           </select>
@@ -94,13 +100,13 @@ export function CopyPanel() {
             ))}
           </select>
         </Field>
-        <Button className="generate-button" onClick={generate} disabled={loading}>
+        <Button className="generate-button" onClick={generate} disabled={s.busy}>
           {loading ? <RefreshCw className="loading-spin" /> : <WandSparkles />}
           {loading ? "Creando la magia…" : "Generar contenido"}
           <span>✦</span>
         </Button>
         <div className="generated-divider">
-          <span>HECHO PARA LA GLORIA</span>
+          <span>HECHO PARA {brand.name.toUpperCase()}</span>
           <span className="simulation-label">Demo AI</span>
         </div>
         {(
