@@ -32,10 +32,10 @@ describe("client isolation", () => {
   it("keeps logo, palette, handles and webhook bound to the client through persistence", async () => {
     useStudio.getState().saveClient(client);
     useStudio.getState().switchClient(client.id);
+    const persisted = localStorage.getItem("galia-la-gloria-v1");
     useStudio.setState({ clients: [defaultClient], activeClientId: defaultClient.id });
-    // Restore the real persisted record rather than the reset above.
-    useStudio.getState().saveClient(client);
-    useStudio.getState().switchClient(client.id);
+    if (!persisted) throw new Error("Missing persisted client data");
+    localStorage.setItem("galia-la-gloria-v1", persisted);
     await useStudio.persist.rehydrate();
     expect(useStudio.getState().clients.find((c) => c.id === client.id)).toEqual(client);
     expect(useStudio.getState().activeClientId).toBe(client.id);
